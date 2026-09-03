@@ -1,0 +1,30 @@
+:root { font-family: system-ui, sans-serif; color-scheme: light dark; }
+body { margin: 0; }
+button { cursor: pointer; }
+.muted { opacity: 0.6; }
+
+.login { min-height: 100vh; display: grid; place-items: center; }
+.login form { display: grid; gap: 12px; width: 320px; }
+.login label { display: grid; gap: 4px; }
+.login input { padding: 8px; }
+
+.chat-layout { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
+.chat-layout aside { display: flex; flex-direction: column; border-right: 1px solid #8884; padding: 12px; gap: 8px; }
+.chat-layout aside header { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.85em; }
+.chat-layout aside header span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-layout nav { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.chat-layout nav a { padding: 6px 8px; border-radius: 6px; text-decoration: none; color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-layout nav a.active { background: #8883; }
+.chat-main { display: flex; flex-direction: column; min-width: 0; }
+.empty { margin: auto; text-align: center; }
+
+.messages { list-style: none; margin: 0; padding: 16px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.msg { max-width: 70ch; }
+.msg.user { align-self: flex-end; }
+.msg .role { font-size: 0.75em; opacity: 0.6; }
+.msg p { margin: 4px 0 0; padding: 8px 12px; border-radius: 10px; background: #8882; white-space: pre-wrap; }
+.msg.user p { background: #3b82f633; }
+.msg[data-status='partial'] p { border: 1px dashed #8886; }
+
+.composer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #8884; }
+.composer input { flex: 1; padding: 10px; }

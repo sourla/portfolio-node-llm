@@ -11,7 +11,7 @@ pnpm workspace. 그 이상의 모노레포 도구는 쓰지 않는다.
 | 경로 | 스택 | 상태 |
 |---|---|---|
 | `apps/api` | NestJS + TypeScript, SQLite(libsql) + Drizzle | 인증·채팅·SSE·mock LLM 완료 |
-| `apps/web` | React + React Router + TypeScript + Vite | 스캐폴드만 |
+| `apps/web` | React + React Router + TypeScript + Vite | 로그인·채팅·스트리밍·중단 완료 |
 | `packages/shared` | API DTO/타입만 공유 | 완료 |
 
 ## 실행
@@ -21,8 +21,10 @@ pnpm workspace. 그 이상의 모노레포 도구는 쓰지 않는다.
 ```bash
 pnpm install
 cp apps/api/.env.example apps/api/.env   # 키 없이 mock LLM으로 동작
-pnpm --filter @portfolio/api dev          # http://localhost:3000
+pnpm dev                                  # api :3000 + web :5173 동시 기동
 ```
+
+web은 프록시 없이 `VITE_API_URL`(기본 http://localhost:3000)로 직접 호출한다. 쿠키는 `credentials: 'include'`로 실리고, api 쪽 CORS가 `WEB_ORIGIN`을 허용한다.
 
 첫 기동 때 `DATABASE_PATH` 위치에 `data.db`가 생기고 `apps/api/drizzle/`의 마이그레이션이 자동 적용된다. `SEED_EMAIL`/`SEED_PASSWORD`가 설정돼 있으면 시드 계정을 한 번만 만든다(기본 `demo@example.com` / `demo1234`).
 
@@ -105,6 +107,37 @@ SQLite(WAL) + Drizzle. 스키마는 `src/db/schema.ts`, 마이그레이션은 `d
 
 `tsconfig.json`은 spec을 포함(IDE·typecheck용), `tsconfig.build.json`은 spec 제외(`nest build`가 기본으로 사용).
 
+## apps/web
+
+### 라우트 (`src/router.tsx`)
+
+| 경로 | 설명 |
+|---|---|
+| `/` | `/chat`으로 이동 |
+| `/login` | 로그인 폼. 성공하면 `?from=` 경로 또는 `/chat`으로 |
+| `/chat` | loader에서 `/auth/me` + 대화 목록을 함께 로드. 401이면 `/login?from=…`으로 redirect |
+| `/chat/:conversationId` | loader에서 메시지 목록 로드. 전송·스트리밍·중단 |
+
+### 스트리밍 (`src/hooks/useStream.ts`)
+
+1. 전송 시 `POST /conversations/:id/messages` → `messageId`. 사용자 메시지와 빈 assistant 항목을 로컬 상태에 먼저 붙인다.
+2. `EventSource`로 `/messages/:id/stream`을 열고 `chunk`를 누적해 그 assistant 항목에 렌더한다.
+3. `done`이면 항목을 `complete`로 확정. 중단 버튼은 `EventSource.close()`를 부르고 항목을 `partial`로 표시한다. 서버는 연결 종료를 감지해 같은 내용을 `partial`로 저장한다.
+4. 스트림이 끝나면 대화 목록을 revalidate한다(첫 메시지 뒤 제목이 바뀌므로). 같은 대화 안에서는 로컬 메시지 상태가 진실이고, 대화를 옮길 때만 loader 결과로 리셋한다.
+
+훅은 종료 콜백에 `messageId`를 인자로 넘긴다. 렌더 중 갱신하는 ref를 updater 안에서 읽으면 StrictMode의 updater 이중 호출 때 값이 어긋나므로 그 패턴을 피한 것이다.
+
+### 테스트
+
+`pnpm --filter @portfolio/web test` (Vitest + RTL, jsdom). `fetch`와 `EventSource`는 `src/test/fakes.ts`로 대체하고, 렌더는 개발 모드와 같은 조건이 되도록 `StrictMode`로 감싼다.
+
+- 미인증 `/chat` 접근 → `/login` 렌더
+- 틀린 비밀번호 401 표시 → 올바른 비밀번호로 로그인 → `/chat` 진입, 대화 목록 렌더
+- 전송 → `EventSource` 생성 → chunk 누적 렌더 → `done`에서 `complete` 확정
+- 중단 → `EventSource.close()` 호출, `partial` 표시, 닫힌 뒤 이벤트 무시
+
+`src/test/setup.ts`에 jsdom 호환 shim이 하나 있다. jsdom의 `AbortSignal`을 Node의 `Request`가 거부해 react-router data router가 생성 단계에서 실패하므로, 테스트에서는 `Request`가 signal을 버리게 한다.
+
 ## 범위 밖
 
 RAG/검색, 배포, CI, 소셜 로그인, 마크다운 렌더링, 대화 공유.
@@ -115,8 +148,8 @@ RAG/검색, 배포, CI, 소셜 로그인, 마크다운 렌더링, 대화 공유.
 - [x] api 인증
 - [x] api 채팅 + mock 스트림
 - [x] api 테스트
-- [ ] web 로그인
-- [ ] web 채팅
-- [ ] web 테스트
+- [x] web 로그인
+- [x] web 채팅
+- [x] web 테스트
 - [ ] Gemini 연결
 - [ ] 브라우저 3개 동시 수동 확인
