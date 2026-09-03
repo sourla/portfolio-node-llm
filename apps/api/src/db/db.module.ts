@@ -5,6 +5,7 @@ import { drizzle } from 'drizzle-orm/libsql';
 import { migrate } from 'drizzle-orm/libsql/migrator';
 import { join } from 'path';
 import * as schema from './schema';
+import { seedDemoUser } from './seed';
 
 export const DB = Symbol('DB');
 export type Db = ReturnType<typeof drizzle<typeof schema>>;
@@ -22,6 +23,10 @@ export type Db = ReturnType<typeof drizzle<typeof schema>>;
         await client.execute('PRAGMA foreign_keys = ON');
         const db = drizzle(client, { schema });
         await migrate(db, { migrationsFolder: join(__dirname, '..', '..', 'drizzle') });
+        await seedDemoUser(db, {
+          email: config.get<string>('SEED_EMAIL'),
+          password: config.get<string>('SEED_PASSWORD'),
+        });
         return db;
       },
     },

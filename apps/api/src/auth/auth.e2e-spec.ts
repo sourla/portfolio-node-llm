@@ -12,6 +12,8 @@ describe('auth flow (e2e, in-memory sqlite)', () => {
   beforeAll(async () => {
     process.env.DATABASE_PATH = ':memory:';
     process.env.JWT_SECRET = 'e2e-secret';
+    process.env.SEED_EMAIL = 'demo@example.com';
+    process.env.SEED_PASSWORD = 'demo1234';
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }), DbModule, AuthModule],
     }).compile();
@@ -22,6 +24,14 @@ describe('auth flow (e2e, in-memory sqlite)', () => {
   });
 
   afterAll(() => app.close());
+
+  it('seed account exists on boot and can log in', async () => {
+    const agent = request.agent(app.getHttpServer());
+    await agent.post('/auth/login').send({ email: 'demo@example.com', password: 'demo1234' }).expect(200);
+    await agent.get('/auth/me').expect(200).expect((res) => {
+      expect(res.body.user.email).toBe('demo@example.com');
+    });
+  });
 
   it('register → me works with cookie; me without cookie is 401', async () => {
     const agent = request.agent(app.getHttpServer());
