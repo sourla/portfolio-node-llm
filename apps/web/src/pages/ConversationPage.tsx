@@ -3,6 +3,9 @@ import { useLoaderData, useOutletContext, useParams } from 'react-router-dom';
 import type { MessageDto } from '@portfolio/shared';
 import { api } from '../api/client';
 import { useStream } from '../hooks/useStream';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 export async function conversationLoader({ params }: { params: { conversationId?: string } }): Promise<MessageDto[]> {
   return api.listMessages(Number(params.conversationId));
@@ -55,19 +58,35 @@ export function ConversationPage() {
 
   return (
     <>
-      <ol className="messages" aria-label="messages">
-        {messages.map((m) => (
-          <li key={m.id} className={`msg ${m.role}`} data-status={m.status}>
-            <span className="role">{m.role === 'user' ? '나' : 'AI'}</span>
-            <p>{m.id === pendingId ? stream.text : m.content}</p>
-            {m.status === 'partial' && m.id !== pendingId && <small className="muted">(중단됨)</small>}
-          </li>
-        ))}
+      <ol aria-label="messages" className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
+        {messages.map((m) => {
+          const isUser = m.role === 'user';
+          const interrupted = m.status === 'partial' && m.id !== pendingId;
+          return (
+            <li key={m.id} data-status={m.status} className={cn('flex max-w-[70ch] flex-col gap-1', isUser ? 'self-end items-end' : 'items-start')}>
+              <span className="text-xs text-muted-foreground">{isUser ? '나' : 'AI'}</span>
+              <p
+                className={cn(
+                  'whitespace-pre-wrap rounded-lg px-3 py-2 text-sm',
+                  isUser ? 'bg-primary text-primary-foreground' : 'bg-muted',
+                  m.status === 'partial' && 'border border-dashed border-muted-foreground/50',
+                )}
+              >
+                {m.id === pendingId ? stream.text : m.content}
+              </p>
+              {interrupted && <small className="text-xs text-muted-foreground">(중단됨)</small>}
+            </li>
+          );
+        })}
         <div ref={bottomRef} />
       </ol>
-      {stream.error && <p role="alert">{stream.error}</p>}
-      <form className="composer" onSubmit={send}>
-        <input
+      {stream.error && (
+        <p role="alert" className="px-4 text-sm text-destructive">
+          {stream.error}
+        </p>
+      )}
+      <form onSubmit={send} className="flex gap-2 border-t p-3">
+        <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="메시지를 입력하세요"
@@ -75,13 +94,13 @@ export function ConversationPage() {
           disabled={stream.streaming}
         />
         {stream.streaming ? (
-          <button type="button" onClick={stream.stop}>
+          <Button type="button" variant="outline" onClick={stream.stop}>
             중단
-          </button>
+          </Button>
         ) : (
-          <button type="submit" disabled={!draft.trim()}>
+          <Button type="submit" disabled={!draft.trim()}>
             전송
-          </button>
+          </Button>
         )}
       </form>
     </>
