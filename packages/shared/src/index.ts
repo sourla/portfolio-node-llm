@@ -38,3 +38,12 @@ export type StreamEvent =
   | { type: 'chunk'; text: string }
   | { type: 'done' }
   | { type: 'error'; message: string };
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthMeResponse {
+  user: UserDto;
+}

@@ -2,6 +2,9 @@
   "name": "portfolio-node-llm",
   "private": true,
   "packageManager": "pnpm@8.14.3",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
     "build": "pnpm -r run build",
