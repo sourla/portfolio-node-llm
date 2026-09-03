@@ -44,8 +44,9 @@ pnpm build
 | `WEB_ORIGIN` | http://localhost:5173 | CORS 허용 origin, credentials 포함 |
 | `JWT_SECRET` | | 필수 |
 | `DATABASE_PATH` | ./data.db | `:memory:` 가능 (테스트에서 사용) |
-| `LLM_PROVIDER` | mock | `mock`만 구현. gemini는 예정 |
-| `GEMINI_API_KEY` | | 예정 |
+| `LLM_PROVIDER` | mock | `mock` \| `gemini` |
+| `GEMINI_API_KEY` | | `gemini`일 때 필수 |
+| `GEMINI_MODEL` | gemini-3.6-flash | 모델 이름. `gemini-2.5-flash`는 신규 키에서 404가 난다 |
 | `SEED_EMAIL`, `SEED_PASSWORD` | | 둘 다 있을 때만 시드 계정 생성 |
 
 ### 인증
@@ -96,14 +97,15 @@ SQLite(WAL) + Drizzle. 스키마는 `src/db/schema.ts`, 마이그레이션은 `d
 `src/llm/llm.provider.ts`의 `LlmProvider` 인터페이스 하나. 구현체는 chunk를 순서대로 yield하고 `AbortSignal`에 반응해야 한다.
 
 - `MockLlmProvider`: 키 없이 동작. 마지막 사용자 메시지를 단어 단위 chunk로 되돌려 준다. 응답이 입력에 따라 달라지므로 동시 스트림이 섞이지 않는지 검증할 수 있다.
-- Gemini: 예정. `LLM_PROVIDER=gemini` + `GEMINI_API_KEY`.
+- `GeminiLlmProvider`: `LLM_PROVIDER=gemini` + `GEMINI_API_KEY`. SDK 없이 `fetch`로 `streamGenerateContent?alt=sse`를 호출하고 `data:` 줄을 파싱한다. Gemini는 SSE 줄바꿈으로 CRLF를 보내므로 파서가 CR을 정규화한다. `AbortSignal`을 `fetch`에 그대로 넘겨 클라이언트가 끊으면 Gemini 호출도 끊긴다. thinking 모델은 첫 토큰까지 수 초가 걸릴 수 있다.
+- `.env`를 바꾸면 api를 재시작해야 한다. `nest start --watch`는 소스 변경만 감지한다.
 
 ### 테스트
 
 `pnpm --filter @portfolio/api test` (Jest, in-memory SQLite).
 
 - `*.spec.ts`: 단위. `*.e2e-spec.ts`: supertest/실제 HTTP 통합. 둘 다 소스 옆에 둔다.
-- 커버: AuthGuard 통과/차단/만료, 시드 idempotent, mock chunk 순서, 클라이언트 disconnect → partial 저장, 동시 스트림 2개 격리, 이전 메시지가 LLM history로 전달, 소유권/상태 검사, e2e 전체 흐름.
+- 커버: AuthGuard 통과/차단/만료, 시드 idempotent, mock chunk 순서, Gemini SSE 파싱(역할 매핑·CRLF·에러·차단·abort 전달), 클라이언트 disconnect → partial 저장, 동시 스트림 2개 격리, 이전 메시지가 LLM history로 전달, 소유권/상태 검사, e2e 전체 흐름.
 
 `tsconfig.json`은 spec을 포함(IDE·typecheck용), `tsconfig.build.json`은 spec 제외(`nest build`가 기본으로 사용).
 
@@ -151,5 +153,5 @@ RAG/검색, 배포, CI, 소셜 로그인, 마크다운 렌더링, 대화 공유.
 - [x] web 로그인
 - [x] web 채팅
 - [x] web 테스트
-- [ ] Gemini 연결
+- [x] Gemini 연결
 - [ ] 브라우저 3개 동시 수동 확인
