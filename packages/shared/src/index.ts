@@ -47,3 +47,7 @@ export interface RegisterRequest {
 export interface AuthMeResponse {
   user: UserDto;
 }
+
+export interface CreateConversationRequest {
+  title?: string;
+}
