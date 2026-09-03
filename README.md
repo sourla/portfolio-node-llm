@@ -10,19 +10,23 @@ pnpm workspace. 그 이상의 모노레포 도구는 쓰지 않는다.
 
 | 경로 | 스택 | 상태 |
 |---|---|---|
-| `apps/api` | NestJS + TypeScript, SQLite(libsql) + Drizzle | 인증·채팅·SSE·mock LLM 완료 |
-| `apps/web` | React + React Router + TypeScript + Vite | 로그인·채팅·스트리밍·중단 완료 |
-| `packages/shared` | API DTO/타입만 공유 | 완료 |
+| `apps/api` | NestJS, SQLite(libsql) + Drizzle, JWT 쿠키 | 인증 · 대화/메시지 API · SSE 스트림 · mock/Gemini provider |
+| `apps/web` | React 18, React Router(data router), Vite, Tailwind v4 + shadcn/ui | 로그인 · 채팅 · 스트리밍/중단 · 다크 테마 |
+| `packages/shared` | API DTO/타입만 공유 | |
 
 ## 실행
 
-요구사항: Node 22 이상, pnpm 8. 그 외 설치할 것 없음. SQLite는 파일 DB라 별도 서버가 없고, 네이티브 빌드도 없다(`@libsql/client`가 prebuilt 바이너리를 가져온다).
+요구사항: Node 22 이상(`.nvmrc`는 24), pnpm 8. 그 외 설치할 것 없음. SQLite는 파일 DB라 별도 서버가 없고, 네이티브 빌드도 없다(`@libsql/client`가 prebuilt 바이너리를 가져온다).
 
 ```bash
 pnpm install
 cp apps/api/.env.example apps/api/.env   # 키 없이 mock LLM으로 동작
 pnpm dev                                  # api :3000 + web :5173 동시 기동
 ```
+
+브라우저에서 http://localhost:5173 → `demo@example.com` / `demo1234`로 로그인.
+
+실제 Gemini로 돌리려면 `apps/api/.env`에 `LLM_PROVIDER=gemini`, `GEMINI_API_KEY=...`를 넣고 api를 재시작한다. mock은 마지막 메시지를 되돌려 주는 고정 응답이라 스트리밍 동작만 확인하는 용도다.
 
 web은 프록시 없이 `VITE_API_URL`(기본 http://localhost:3000)로 직접 호출한다. 쿠키는 `credentials: 'include'`로 실리고, api 쪽 CORS가 `WEB_ORIGIN`을 허용한다.
 
@@ -111,6 +115,10 @@ SQLite(WAL) + Drizzle. 스키마는 `src/db/schema.ts`, 마이그레이션은 `d
 
 ## apps/web
 
+### UI
+
+Tailwind v4(`@tailwindcss/vite`) + shadcn/ui(base-ui 기반, `components.json`). 컴포넌트는 `src/components/ui/`에 소스로 들어 있어 라이브러리 업데이트에 끌려가지 않는다. 다크 테마는 `useTheme`이 `<html>`에 `.dark` 클래스를 토글하고 선택을 localStorage에 저장한다. 첫 페인트 깜빡임을 막기 위해 `index.html`의 인라인 스크립트가 React보다 먼저 클래스를 붙인다.
+
 ### 라우트 (`src/router.tsx`)
 
 | 경로 | 설명 |
@@ -144,14 +152,12 @@ SQLite(WAL) + Drizzle. 스키마는 `src/db/schema.ts`, 마이그레이션은 `d
 
 RAG/검색, 배포, CI, 소셜 로그인, 마크다운 렌더링, 대화 공유.
 
-## 진행
+## 직접 확인해 볼 것
 
-- [x] shared 타입
-- [x] api 인증
-- [x] api 채팅 + mock 스트림
-- [x] api 테스트
-- [x] web 로그인
-- [x] web 채팅
-- [x] web 테스트
-- [x] Gemini 연결
-- [ ] 브라우저 3개 동시 수동 확인
+- 브라우저 탭 3개에서 동시에 전송해 각 탭의 답변이 섞이지 않는지. 서버는 메시지 id마다 독립된 스트림을 연다.
+- 스트림 도중 중단 버튼 → 새로고침. 잘린 답변이 `(중단됨)` 표시와 함께 남아 있어야 한다.
+- 스트림 도중 탭을 닫기. api 로그 없이도 DB에 `partial`로 저장된다.
+
+## 상태
+
+api·web 기능과 테스트, Gemini 연결까지 완료. 남은 항목은 위의 수동 확인.
